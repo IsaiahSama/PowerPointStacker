@@ -3,7 +3,7 @@
  * Manages application windows (setup and presentation)
  */
 
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, screen, dialog } from 'electron';
 import path from 'node:path';
 import { getConfig } from './config';
 
@@ -15,6 +15,7 @@ export class WindowManager {
   private setupWindow: BrowserWindow | null = null;
   private presentWindow: BrowserWindow | null = null;
   private config = getConfig();
+  private isExitingApp = false; // Flag to track intentional app exit vs mode switching
 
   /**
    * Create the setup window (initial window for file management)
@@ -51,7 +52,42 @@ export class WindowManager {
       this.setupWindow.webContents.openDevTools();
     }
 
-    // Handle window close
+    // Intercept window close to show confirmation dialog
+    this.setupWindow.on('close', async (event) => {
+
+      if (!this.setupWindow) {
+        return;
+      }
+
+      // Only show confirmation if user is trying to exit (not during mode switching)
+      if (this.isExitingApp) {
+        // Already confirmed exit, allow close to proceed
+        return;
+      }
+
+      // Prevent immediate close to show confirmation
+      event.preventDefault();
+
+      // Show confirmation dialog
+      const result = await dialog.showMessageBox(this.setupWindow, {
+        type: 'question',
+        buttons: ['Cancel', 'Exit'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Exit PowerPoint Stacker',
+        message: 'Are you sure you want to exit?',
+        detail: 'Any unsaved presentation queue will be lost.'
+      });
+
+      // If user confirms exit, close the window without confirmation
+      if (result.response === 1) {
+        // Set flag to allow close without confirmation
+        this.isExitingApp = true;
+        this.setupWindow.close();
+      }
+    });
+
+    // Handle window closed (after close event completes)
     this.setupWindow.on('closed', () => {
       this.setupWindow = null;
     });
@@ -101,16 +137,40 @@ export class WindowManager {
   }
 
   /**
-   * Show setup window, hide presentation window
+   * Show setup window, destroy presentation window
    */
   switchToSetupMode(): void {
-    if (this.presentWindow) {
-      this.presentWindow.hide();
-      this.presentWindow.setFullScreen(false);
+
+    // Destroy presentation window to free resources
+    if (this.presentWindow && !this.presentWindow.isDestroyed()) {
+      // Remove all listeners before destroying to avoid triggering close events
+      this.presentWindow.removeAllListeners();
+      this.presentWindow.destroy();
+      this.presentWindow = null;
     }
-    if (this.setupWindow) {
+
+    // Always destroy and recreate setup window to ensure it shows properly
+    // Hidden windows don't always reappear correctly when show() is called
+    if (this.setupWindow && !this.setupWindow.isDestroyed()) {
+      // Temporarily disable exit flag to prevent confirmation dialog
+      const wasExiting = this.isExitingApp;
+      this.isExitingApp = true;
+      this.setupWindow.removeAllListeners();
+      this.setupWindow.destroy();
+      this.isExitingApp = wasExiting;
+      this.setupWindow = null;
+    }
+
+    // Create fresh setup window
+    this.createSetupWindow();
+
+    if (this.setupWindow && !this.setupWindow.isDestroyed()) {
+      // Force show and focus
       this.setupWindow.show();
       this.setupWindow.focus();
+      this.setupWindow.moveTop();
+    } else {
+      console.error('Failed to create setup window');
     }
   }
 
@@ -138,6 +198,7 @@ export class WindowManager {
       }
     }
 
+    // Hide setup window but keep it in memory so it doesn't trigger window-all-closed
     if (this.setupWindow) {
       this.setupWindow.hide();
     }
@@ -147,13 +208,16 @@ export class WindowManager {
    * Close all windows
    */
   closeAllWindows(): void {
-    if (this.setupWindow) {
-      this.setupWindow.close();
-      this.setupWindow = null;
-    }
-    if (this.presentWindow) {
+    // Set exit flag to allow close without confirmation
+    this.isExitingApp = true;
+
+    if (this.presentWindow && !this.presentWindow.isDestroyed()) {
       this.presentWindow.close();
       this.presentWindow = null;
+    }
+    if (this.setupWindow && !this.setupWindow.isDestroyed()) {
+      this.setupWindow.close();
+      this.setupWindow = null;
     }
   }
 

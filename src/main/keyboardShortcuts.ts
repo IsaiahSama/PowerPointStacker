@@ -92,8 +92,15 @@ async function handleKeyboardInput(
 
       case 'Escape':
       case 'Esc':
-        presentationManager.stopPresentation();
-        windowManager.switchToSetupMode();
+        console.log('ESC key pressed - exiting presentation mode');
+        try {
+          presentationManager.stopPresentation();
+          console.log('Presentation stopped, attempting to switching to setup mode...');
+          windowManager.switchToSetupMode();
+          console.log('Switched to setup mode (probably)');
+        } catch (error) {
+          console.error('Error handling ESC key:', error);
+        }
         event.preventDefault();
         break;
 

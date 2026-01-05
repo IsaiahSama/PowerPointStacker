@@ -193,9 +193,17 @@ export function registerIPCHandlers(
     }
   });
 
-  // Quit app
+  // Quit app - triggers confirmation dialog via window close
   ipcMain.on('app:quit', () => {
-    app.quit();
+    // Close setup window which has the confirmation dialog
+    // If confirmed, all windows will close and app will quit
+    const setupWindow = windowManager.getSetupWindow();
+    if (setupWindow && !setupWindow.isDestroyed()) {
+      setupWindow.close();
+    } else {
+      // No setup window, just quit
+      app.quit();
+    }
   });
 }
 
