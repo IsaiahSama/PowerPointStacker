@@ -252,6 +252,10 @@ body {
   display: flex;
   flex-direction: column;
   color: white;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 .present-view.loading {
@@ -264,6 +268,22 @@ body {
   color: #aaa;
 }
 
+/* Loading Spinner */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Slide Display */
 .slide-display {
   flex: 1;
@@ -272,11 +292,15 @@ body {
   justify-content: center;
   background-color: #000;
   padding: 20px;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .slide-image {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 

@@ -29,6 +29,7 @@ export interface ElectronAPI {
   clearQueue(): Promise<IPCResponse<void>>;
 
   // Presentation mode
+  preRenderSlides(request: {}): Promise<IPCResponse<void>>;
   startPresentation(request: StartPresentationRequest): Promise<IPCResponse<SlideDataResponse>>;
   stopPresentation(): Promise<IPCResponse<void>>;
   navigate(request: NavigateRequest): Promise<IPCResponse<SlideDataResponse | null>>;
@@ -65,6 +66,9 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('presentation:clear'),
 
   // Presentation mode
+  preRenderSlides: (request) =>
+    ipcRenderer.invoke('present:preRender', request),
+
   startPresentation: (request) =>
     ipcRenderer.invoke('present:start', request),
 

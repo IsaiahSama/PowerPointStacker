@@ -11,6 +11,7 @@ interface SetupViewProps {
 export function SetupView({ onStartPresentation }: SetupViewProps) {
   const [presentations, setPresentations] = useState<PresentationFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPreparingPresentation, setIsPreparingPresentation] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,13 +97,30 @@ export function SetupView({ onStartPresentation }: SetupViewProps) {
 
     try {
       setError(null);
+      setIsPreparingPresentation(true);
+
+      // Pre-render all slides before starting presentation
+      console.log('Pre-rendering slides...');
+      const preRenderResponse = await window.electronAPI.preRenderSlides({});
+
+      if (!preRenderResponse.success) {
+        setError(`Failed to prepare slides: ${preRenderResponse.error?.message}`);
+        setIsPreparingPresentation(false);
+        return;
+      }
+
+      console.log('Slides pre-rendered, starting presentation...');
       const response = await window.electronAPI.startPresentation({});
+
+      setIsPreparingPresentation(false);
+
       if (response.success) {
         onStartPresentation();
       } else {
         setError(`Failed to start presentation: ${response.error?.message}`);
       }
     } catch (err) {
+      setIsPreparingPresentation(false);
       setError('An error occurred while starting presentation');
       console.error('Error starting presentation:', err);
     }
@@ -139,6 +157,7 @@ export function SetupView({ onStartPresentation }: SetupViewProps) {
         <StartButton
           onClick={handleStart}
           disabled={presentations.length === 0 || isLoading}
+          loading={isPreparingPresentation}
         />
       </footer>
     </div>

@@ -143,6 +143,49 @@ export class PresentationManager {
   }
 
   /**
+   * Pre-render all slides in the queue
+   * This ensures all slides are converted to images before presentation starts
+   */
+  async preRenderAllSlides(): Promise<void> {
+    if (this.queue.order.length === 0) {
+      throw new AppError(
+        ErrorCode.NO_PRESENTATIONS_LOADED,
+        'Cannot pre-render slides: No presentations loaded'
+      );
+    }
+
+    console.log('Pre-rendering all slides...');
+
+    // Extract first slide from each presentation to trigger LibreOffice rendering
+    // The rendering is cached, so this will prepare all slides for the presentation
+    for (const presentationId of this.queue.order) {
+      const presentation = this.queue.presentations[presentationId];
+      console.log(`Pre-rendering slides for: ${presentation.name} (${presentation.slideCount} slides)`);
+
+      try {
+        // Extract the first slide to trigger full presentation rendering
+        // The presentationParser will render all slides at once and cache them
+        await this.parser.extractSlide(
+          presentationId,
+          presentation.filePath,
+          presentation.format,
+          1,
+          presentation.slideCount
+        );
+        console.log(`✓ Pre-rendered ${presentation.slideCount} slides for: ${presentation.name}`);
+      } catch (error) {
+        console.error(`Failed to pre-render slides for ${presentation.name}:`, error);
+        throw new AppError(
+          ErrorCode.SLIDE_NOT_FOUND,
+          `Failed to pre-render slides for ${presentation.name}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
+    console.log('All slides pre-rendered successfully!');
+  }
+
+  /**
    * Start presentation mode
    */
   async startPresentation(

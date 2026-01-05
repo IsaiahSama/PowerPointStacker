@@ -115,6 +115,16 @@ export function registerIPCHandlers(
     }
   });
 
+  // Pre-render all slides
+  ipcMain.handle('present:preRender', async () => {
+    try {
+      await presentationManager.preRenderAllSlides();
+      return { success: true } as IPCResponse;
+    } catch (error) {
+      return formatError(error);
+    }
+  });
+
   // Start presentation
   ipcMain.handle('present:start', async (_event, request: StartPresentationRequest) => {
     try {
