@@ -25,12 +25,12 @@ const config: ForgeConfig = {
       build: [
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
-          entry: 'src/main.ts',
+          entry: 'src/main/index.ts',
           config: 'vite.main.config.ts',
           target: 'main',
         },
         {
-          entry: 'src/preload.ts',
+          entry: 'src/common/preload.ts',
           config: 'vite.preload.config.ts',
           target: 'preload',
         },
@@ -41,17 +41,6 @@ const config: ForgeConfig = {
           config: 'vite.renderer.config.ts',
         },
       ],
-    }),
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
-    new FusesPlugin({
-      version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
-      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
-      [FuseV1Options.EnableNodeCliInspectArguments]: false,
-      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
 };

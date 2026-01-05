@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPoint Stacker - Backend Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .info {
+            color: #2196F3;
+        }
+        .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.online {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.offline {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 PowerPoint Stacker - Backend Service Test
+        <span id="apiStatus" class="status offline">API NOT READY</span>
+    </h1>
+
+    <div class="test-section">
+        <h2>1. API Availability Test</h2>
+        <button onclick="testAPIAvailability()">Test API Availability</button>
+        <div id="api-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. File Dialog Test</h2>
+        <button onclick="testFileDialog()">Open File Dialog</button>
+        <div id="file-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Queue Management Test</h2>
+        <button onclick="testGetQueue()">Get Queue</button>
+        <button onclick="testClearQueue()">Clear Queue</button>
+        <div id="queue-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Event Listener Test</h2>
+        <button onclick="setupEventListeners()">Setup Event Listeners</button>
+        <button onclick="removeEventListeners()">Remove Listeners</button>
+        <div id="event-output" class="output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Add Presentation Test (Manual)</h2>
+        <p>Use the file dialog to add presentations, then check the queue.</p>
+        <button onclick="testAddPresentations()">Add via File Dialog</button>
+        <div id="add-output" class="output"></div>
+    </div>
+
+    <script>
+        // Check if API is available
+        window.addEventListener('DOMContentLoaded', () => {
+            const statusEl = document.getElementById('apiStatus');
+            if (window.electronAPI) {
+                statusEl.textContent = 'API READY';
+                statusEl.className = 'status online';
+                log('api-output', '✅ ElectronAPI is available', 'success');
+                log('api-output', 'Available methods: ' + Object.keys(window.electronAPI).join(', '), 'info');
+            } else {
+                statusEl.textContent = 'API NOT AVAILABLE';
+                statusEl.className = 'status offline';
+                log('api-output', '❌ ElectronAPI is not available', 'error');
+            }
+        });
+
+        function log(elementId, message, type = 'info') {
+            const output = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            output.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function testAPIAvailability() {
+            log('api-output', '--- Testing API Availability ---');
+
+            if (!window.electronAPI) {
+                log('api-output', '❌ ElectronAPI not found!', 'error');
+                return;
+            }
+
+            const methods = [
+                'getQueue',
+                'openFileDialog',
+                'addPresentations',
+                'removePresentation',
+                'reorderPresentations',
+                'clearQueue',
+                'startPresentation',
+                'stopPresentation',
+                'navigate',
+                'getCurrentSlide',
+                'onQueueUpdated',
+                'onSlideChanged',
+                'onPresentationEnded',
+                'quitApp'
+            ];
+
+            methods.forEach(method => {
+                if (typeof window.electronAPI[method] === 'function') {
+                    log('api-output', `✅ ${method} - Available`, 'success');
+                } else {
+                    log('api-output', `❌ ${method} - Missing`, 'error');
+                }
+            });
+        }
+
+        async function testFileDialog() {
+            log('file-output', '--- Opening File Dialog ---');
+
+            try {
+                const result = await window.electronAPI.openFileDialog();
+                log('file-output', 'Result: ' + JSON.stringify(result, null, 2), 'info');
+
+                if (result.success) {
+                    log('file-output', `✅ Dialog opened successfully`, 'success');
+                    if (result.data.canceled) {
+                        log('file-output', 'User canceled the dialog', 'info');
+                    } else {
+                        log('file-output', `Selected ${result.data.filePaths.length} file(s)`, 'success');
+                        result.data.filePaths.forEach(path => {
+                            log('file-output', `  - ${path}`, 'info');
+                        });
+                    }
+                } else {
+                    log('file-output', `❌ Error: ${result.error.message}`, 'error');
+                }
+            } catch (error) {
+                log('file-output', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetQueue() {
+            log('queue-output', '--- Getting Queue ---');
+
+            try {
+                const result = await window.electronAPI.getQueue();
+                log('queue-output', 'Result: ' + JSON.stringify(result, null, 2), 'info');
+
+                if (result.success) {
+                    const queue = result.data;
+                    log('queue-output', `✅ Queue retrieved successfully`, 'success');
+                    log('queue-output', `Presentations: ${queue.order.length}`, 'info');
+                    log('queue-output', `Current Presentation: ${queue.currentPresentationId || 'None'}`, 'info');
+                    log('queue-output', `Current Slide: ${queue.currentSlideNumber || 'None'}`, 'info');
+
+                    if (queue.order.length > 0) {
+                        log('queue-output', 'Presentation list:', 'info');
+                        queue.order.forEach((id, index) => {
+                            const pres = queue.presentations[id];
+                            log('queue-output', `  ${index + 1}. ${pres.name} (${pres.slideCount} slides)`, 'info');
+                        });
+                    }
+                } else {
+                    log('queue-output', `❌ Error: ${result.error.message}`, 'error');
+                }
+            } catch (error) {
+                log('queue-output', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        async function testClearQueue() {
+            log('queue-output', '--- Clearing Queue ---');
+
+            try {
+                const result = await window.electronAPI.clearQueue();
+                log('queue-output', 'Result: ' + JSON.stringify(result, null, 2), 'info');
+
+                if (result.success) {
+                    log('queue-output', `✅ Queue cleared successfully`, 'success');
+                } else {
+                    log('queue-output', `❌ Error: ${result.error.message}`, 'error');
+                }
+            } catch (error) {
+                log('queue-output', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+
+        let cleanupFunctions = [];
+
+        function setupEventListeners() {
+            log('event-output', '--- Setting Up Event Listeners ---');
+
+            // Clean up old listeners first
+            removeEventListeners();
+
+            try {
+                const cleanup1 = window.electronAPI.onQueueUpdated((queue) => {
+                    log('event-output', `🔔 Queue Updated: ${queue.order.length} presentations`, 'success');
+                });
+                cleanupFunctions.push(cleanup1);
+
+                const cleanup2 = window.electronAPI.onSlideChanged((data) => {
+                    log('event-output', `🔔 Slide Changed: ${data.presentationName} - Slide ${data.currentSlideNumber}/${data.totalSlidesInPresentation}`, 'success');
+                });
+                cleanupFunctions.push(cleanup2);
+
+                const cleanup3 = window.electronAPI.onPresentationEnded((data) => {
+                    log('event-output', `🔔 Presentation Ended: ${data.totalPresentationsShown} presentations, ${data.totalSlidesShown} slides`, 'success');
+                });
+                cleanupFunctions.push(cleanup3);
+
+                log('event-output', `✅ Event listeners set up successfully`, 'success');
+            } catch (error) {
+                log('event-output', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function removeEventListeners() {
+            log('event-output', '--- Removing Event Listeners ---');
+            cleanupFunctions.forEach(cleanup => cleanup());
+            cleanupFunctions = [];
+            log('event-output', `✅ Event listeners removed`, 'success');
+        }
+
+        async function testAddPresentations() {
+            log('add-output', '--- Add Presentations Test ---');
+
+            try {
+                // First, open file dialog
+                const dialogResult = await window.electronAPI.openFileDialog();
+
+                if (!dialogResult.success || dialogResult.data.canceled || dialogResult.data.filePaths.length === 0) {
+                    log('add-output', 'No files selected', 'info');
+                    return;
+                }
+
+                log('add-output', `Selected ${dialogResult.data.filePaths.length} file(s)`, 'info');
+
+                // Add the presentations
+                const addResult = await window.electronAPI.addPresentations({
+                    filePaths: dialogResult.data.filePaths
+                });
+
+                log('add-output', 'Result: ' + JSON.stringify(addResult, null, 2), 'info');
+
+                if (addResult.success) {
+                    log('add-output', `✅ Added ${addResult.data.added.length} presentation(s)`, 'success');
+                    addResult.data.added.forEach(pres => {
+                        log('add-output', `  ✅ ${pres.name} (${pres.slideCount} slides)`, 'success');
+                    });
+
+                    if (addResult.data.failed.length > 0) {
+                        log('add-output', `❌ Failed to add ${addResult.data.failed.length} presentation(s)`, 'error');
+                        addResult.data.failed.forEach(fail => {
+                            log('add-output', `  ❌ ${fail.filePath}: ${fail.error}`, 'error');
+                        });
+                    }
+
+                    // Refresh queue
+                    setTimeout(() => testGetQueue(), 500);
+                } else {
+                    log('add-output', `❌ Error: ${addResult.error.message}`, 'error');
+                }
+            } catch (error) {
+                log('add-output', `❌ Exception: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

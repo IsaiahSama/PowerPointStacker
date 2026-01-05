@@ -1,0 +1,1 @@
+{"version":3,"file":"AddFilesButton.js","sourceRoot":"","sources":["../../../../src/renderer/components/SetupView/AddFilesButton.tsx"],"names":[],"mappings":";;;;AAOA,SAAgB,cAAc,CAAC,EAAE,OAAO,EAAE,QAAQ,GAAG,KAAK,EAAuB;IAC/E,OAAO,CACL,oCACE,SAAS,EAAC,kBAAkB,EAC5B,OAAO,EAAE,OAAO,EAChB,QAAQ,EAAE,QAAQ,aAElB,iCAAM,SAAS,EAAC,aAAa,kBAAS,yBAE/B,CACV,CAAC;AACJ,CAAC;AAXD,wCAWC"}
