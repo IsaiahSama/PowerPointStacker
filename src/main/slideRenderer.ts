@@ -174,13 +174,13 @@ export class SlideRenderer {
 
       console.log(`Successfully generated ${pngFiles.length} PNG images from presentation`);
 
-      // Read all PNG buffers
-      const buffers: Buffer[] = [];
-      for (const pngFile of pngFiles) {
-        const filePath = path.join(tempDir, pngFile);
-        const buffer = await fs.readFile(filePath);
-        buffers.push(buffer);
-      }
+      // Read all PNG buffers in parallel for better performance
+      const buffers: Buffer[] = await Promise.all(
+        pngFiles.map(async (pngFile) => {
+          const filePath = path.join(tempDir, pngFile);
+          return await fs.readFile(filePath);
+        })
+      );
 
       return buffers;
     } finally {

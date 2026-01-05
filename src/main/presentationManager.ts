@@ -145,6 +145,7 @@ export class PresentationManager {
   /**
    * Pre-render all slides in the queue
    * This ensures all slides are converted to images before presentation starts
+   * Uses parallel processing for better performance
    */
   async preRenderAllSlides(): Promise<void> {
     if (this.queue.order.length === 0) {
@@ -154,35 +155,100 @@ export class PresentationManager {
       );
     }
 
-    console.log('Pre-rendering all slides...');
+    const totalPresentations = this.queue.order.length;
+    const totalSlides = this.getTotalSlideCount();
 
-    // Extract first slide from each presentation to trigger LibreOffice rendering
-    // The rendering is cached, so this will prepare all slides for the presentation
-    for (const presentationId of this.queue.order) {
+    console.log(`Pre-rendering ${totalSlides} slides from ${totalPresentations} presentations in parallel...`);
+    const startTime = Date.now();
+
+    // Process presentations in parallel with a concurrency limit
+    // This prevents overwhelming the system while maximizing throughput
+    const MAX_CONCURRENT_CONVERSIONS = 3;
+    const results = await this.processPresentationsInParallel(
+      this.queue.order,
+      MAX_CONCURRENT_CONVERSIONS
+    );
+
+    // Check for any failures
+    const failures = results.filter(r => !r.success);
+    if (failures.length > 0) {
+      const failedNames = failures.map(f => f.presentationName).join(', ');
+      throw new AppError(
+        ErrorCode.SLIDE_NOT_FOUND,
+        `Failed to pre-render slides for: ${failedNames}`
+      );
+    }
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`✓ All ${totalSlides} slides pre-rendered successfully in ${duration}s!`);
+  }
+
+  /**
+   * Process multiple presentations in parallel with concurrency limit
+   */
+  private async processPresentationsInParallel(
+    presentationIds: UUID[],
+    maxConcurrent: number
+  ): Promise<Array<{ success: boolean; presentationName: string; error?: string }>> {
+    const results: Array<{ success: boolean; presentationName: string; error?: string }> = [];
+    const inProgress: Promise<void>[] = [];
+
+    for (const presentationId of presentationIds) {
       const presentation = this.queue.presentations[presentationId];
-      console.log(`Pre-rendering slides for: ${presentation.name} (${presentation.slideCount} slides)`);
 
-      try {
-        // Extract the first slide to trigger full presentation rendering
-        // The presentationParser will render all slides at once and cache them
-        await this.parser.extractSlide(
-          presentationId,
-          presentation.filePath,
-          presentation.format,
-          1,
-          presentation.slideCount
-        );
-        console.log(`✓ Pre-rendered ${presentation.slideCount} slides for: ${presentation.name}`);
-      } catch (error) {
-        console.error(`Failed to pre-render slides for ${presentation.name}:`, error);
-        throw new AppError(
-          ErrorCode.SLIDE_NOT_FOUND,
-          `Failed to pre-render slides for ${presentation.name}: ${error instanceof Error ? error.message : String(error)}`
-        );
+      // Create the rendering task
+      const task = (async () => {
+        const taskStartTime = Date.now();
+        console.log(`[${presentation.name}] Starting conversion (${presentation.slideCount} slides)...`);
+
+        try {
+          // Extract the first slide to trigger full presentation rendering
+          // The presentationParser will render all slides at once and cache them
+          await this.parser.extractSlide(
+            presentationId,
+            presentation.filePath,
+            presentation.format,
+            1,
+            presentation.slideCount
+          );
+
+          const duration = ((Date.now() - taskStartTime) / 1000).toFixed(2);
+          console.log(`✓ [${presentation.name}] Completed in ${duration}s (${presentation.slideCount} slides)`);
+
+          results.push({ success: true, presentationName: presentation.name });
+        } catch (error) {
+          const duration = ((Date.now() - taskStartTime) / 1000).toFixed(2);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`✗ [${presentation.name}] Failed after ${duration}s: ${errorMessage}`);
+
+          results.push({
+            success: false,
+            presentationName: presentation.name,
+            error: errorMessage
+          });
+        }
+      })();
+
+      inProgress.push(task);
+
+      // Wait if we've reached the concurrency limit
+      if (inProgress.length >= maxConcurrent) {
+        await Promise.race(inProgress);
+        // Remove completed tasks
+        const stillRunning = inProgress.filter(p => {
+          let completed = false;
+          p.then(() => { completed = true; }).catch(() => { completed = true; });
+          return !completed;
+        });
+        inProgress.length = 0;
+        inProgress.push(...stillRunning);
       }
     }
 
-    console.log('All slides pre-rendered successfully!');
+    // Wait for all remaining tasks to complete
+    await Promise.all(inProgress);
+
+    return results;
   }
 
   /**
