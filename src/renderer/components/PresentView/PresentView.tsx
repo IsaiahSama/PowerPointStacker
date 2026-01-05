@@ -28,48 +28,9 @@ export function PresentView({ onExit }: PresentViewProps) {
 
     loadCurrentSlide();
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showEndScreen) return;
-
-      switch (e.key) {
-        case 'ArrowRight':
-          handleNavigate(NavigationDirection.NEXT);
-          e.preventDefault();
-          break;
-        case 'ArrowLeft':
-          handleNavigate(NavigationDirection.PREVIOUS);
-          e.preventDefault();
-          break;
-        case 'PageDown':
-          if (e.ctrlKey) {
-            handleNavigate(NavigationDirection.NEXT_PRESENTATION);
-            e.preventDefault();
-          }
-          break;
-        case 'PageUp':
-          if (e.ctrlKey) {
-            handleNavigate(NavigationDirection.PREVIOUS_PRESENTATION);
-            e.preventDefault();
-          }
-          break;
-        case 'Escape':
-          handleExit();
-          e.preventDefault();
-          break;
-        case 'Home':
-          handleNavigate(NavigationDirection.FIRST_SLIDE);
-          e.preventDefault();
-          break;
-        case 'End':
-          handleNavigate(NavigationDirection.LAST_SLIDE);
-          e.preventDefault();
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showEndScreen]);
+    // Note: Keyboard shortcuts are handled by the main process (keyboardShortcuts.ts)
+    // to prevent duplicate events and ensure consistent behavior
+  }, []);
 
   const loadCurrentSlide = async () => {
     try {

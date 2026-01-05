@@ -3,6 +3,7 @@ import type { PresentationFile, PresentationQueue, UUID } from '../../../common/
 import { FileList } from './FileList';
 import { AddFilesButton } from './AddFilesButton';
 import { StartButton } from './StartButton';
+import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 
 interface SetupViewProps {
   onStartPresentation: () => void;
@@ -135,19 +136,25 @@ export function SetupView({ onStartPresentation }: SetupViewProps) {
       </header>
 
       <div className="setup-content">
-        <AddFilesButton onClick={handleAddFiles} disabled={isLoading} />
+        <div className="main-section">
+          <AddFilesButton onClick={handleAddFiles} disabled={isLoading} />
 
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
 
-        <FileList
-          presentations={presentations}
-          onRemove={handleRemove}
-          onReorder={handleReorder}
-        />
+          <FileList
+            presentations={presentations}
+            onRemove={handleRemove}
+            onReorder={handleReorder}
+          />
+        </div>
+
+        <aside className="help-section">
+          <KeyboardShortcutsHelp />
+        </aside>
       </div>
 
       <footer className="setup-footer">
