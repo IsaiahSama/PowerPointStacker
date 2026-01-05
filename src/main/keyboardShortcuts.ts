@@ -8,6 +8,10 @@ import type { WindowManager } from './windowManager';
 import type { PresentationManager } from './presentationManager';
 import { NavigationDirection } from '../common/types';
 
+// Throttle state to prevent rapid successive navigation
+let lastNavigationTime = 0;
+const NAVIGATION_THROTTLE_MS = 250; // 250ms delay between navigations
+
 /**
  * Register keyboard shortcuts for presentation window
  */
@@ -20,6 +24,9 @@ export function registerKeyboardShortcuts(
   if (!presentWindow) {
     return;
   }
+
+  // Reset throttle when registering
+  lastNavigationTime = 0;
 
   presentWindow.webContents.on('before-input-event', async (event, input) => {
     if (input.type !== 'keyDown') {
@@ -101,12 +108,22 @@ async function handleKeyboardInput(
 
 /**
  * Handle navigation and send updates to renderer
+ * Includes throttling to prevent rapid successive navigation
  */
 async function handleNavigation(
   direction: NavigationDirection,
   presentationManager: PresentationManager,
   presentWindow: Electron.BrowserWindow
 ): Promise<void> {
+  // Throttle navigation to prevent rapid successive events
+  const now = Date.now();
+  if (now - lastNavigationTime < NAVIGATION_THROTTLE_MS) {
+    console.log(`Navigation throttled (${now - lastNavigationTime}ms since last navigation)`);
+    return;
+  }
+
+  lastNavigationTime = now;
+
   try {
     const result = await presentationManager.navigate(direction);
 
@@ -132,4 +149,7 @@ export function unregisterKeyboardShortcuts(windowManager: WindowManager): void 
   if (presentWindow) {
     presentWindow.webContents.removeAllListeners('before-input-event');
   }
+
+  // Reset throttle state
+  lastNavigationTime = 0;
 }
